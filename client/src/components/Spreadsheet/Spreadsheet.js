@@ -2,16 +2,6 @@ import React from "react";
 
 import SpreadsheetRow from "components/SpreadsheetRow";
 
-const createSpreadsheet = () => {
-  const spreadsheet = {
-    id: "spreadsheet1",
-    numOfColumns: 10,
-    rows: new Array(10).fill(1).map((_, i) => ({ id: `Row#${i}` })),
-  };
-
-  return spreadsheet;
-};
-
 const getLabel = (index, label = "") => {
   if (index < 0) {
     return label;
@@ -29,9 +19,98 @@ const getColumnsLabels = (numOfColumns) => {
   });
 };
 
-const resolveCellFunction = (rawValue) => `Function #${rawValue}`;
+const createSpreadsheet = ({ numOfColumns = 10, numOfRows = 10 } = {}) => {
+  const spreadsheet = {
+    id: "spreadsheet1",
+    columns: getColumnsLabels(numOfColumns),
+    rows: new Array(numOfRows).fill(1).map((_, i) => ({ id: `Row#${i}` })),
+  };
 
-const parseCellValue = (rawValue) => {
+  return spreadsheet;
+};
+
+class CellReferenceError extends Error {
+  constructor(cell) {
+    super(`Referenced Cell "${cell}" does not exist`);
+    this.cell = cell;
+  }
+}
+
+const cellRegex = /([A-Za-z]+)(\d+)/;
+
+// TODO: Use Cell ID?
+const getCellValue = (cellPosition, spreadsheet) => {
+  const [, column, rowNumber] = cellRegex.exec(cellPosition);
+  const cellRow = spreadsheet.rows[rowNumber - 1];
+
+  if (!cellRow || !spreadsheet.columns.includes(column.toUpperCase())) {
+    throw new CellReferenceError(cellPosition);
+  }
+
+  const cell = cellRow[column];
+  return cell ? cell.value : 0;
+};
+
+const addResolver = {
+  parse(expression) {
+    return expression.split("+");
+  },
+
+  evaluate(values) {
+    return values.reduce((result, value) => result + value, 0);
+  },
+};
+
+const multiplyResolver = {
+  parse(expression) {
+    return expression.split("*");
+  },
+  evaluate(values) {
+    return values.reduce((result, value) => result * value, 1);
+  },
+};
+
+const cellResolver = {
+  parse(expression) {
+    return expression;
+  },
+  evaluate(values, spreadsheet) {
+    // NOTE: This assumes that value can only be a number or a cell reference
+    const maybeNumber = +values;
+    if (Number.isNaN(maybeNumber)) {
+      return getCellValue(values, spreadsheet);
+    }
+
+    return values;
+  },
+};
+
+const defaultResolvers = [addResolver, multiplyResolver, cellResolver];
+
+const resolve = (expression, spreadsheet, resolvers = defaultResolvers) => {
+  const [currentResolver, ...nextResolvers] = resolvers;
+  const parts = currentResolver.parse(expression, spreadsheet);
+  const values =
+    nextResolvers.length > 0
+      ? parts.map((part) => resolve(part, spreadsheet, nextResolvers))
+      : parts;
+  return currentResolver.evaluate(values, spreadsheet);
+};
+
+const resolveCellFunction = (rawValue, spreadsheet) => {
+  try {
+    const expression = rawValue.slice(1);
+    return resolve(expression, spreadsheet);
+  } catch (error) {
+    if (error instanceof CellReferenceError) {
+      return `#ReferenceError: ${error.cell}`;
+    } else {
+      throw error;
+    }
+  }
+};
+
+const parseCellValue = (rawValue, spreadsheet) => {
   if (!rawValue) {
     return "";
   }
@@ -42,7 +121,7 @@ const parseCellValue = (rawValue) => {
   }
 
   if (typeof rawValue === "string" && rawValue.startsWith("=")) {
-    return resolveCellFunction(rawValue);
+    return resolveCellFunction(rawValue, spreadsheet);
   }
 
   return "#TypeError";
@@ -56,7 +135,7 @@ const Spreadsheet = () => {
       ...row,
       [column]: {
         rawValue,
-        value: parseCellValue(rawValue),
+        value: parseCellValue(rawValue, spreadsheet),
       },
     };
     updateSpreadsheet({
@@ -67,17 +146,12 @@ const Spreadsheet = () => {
     });
   };
 
-  const columns = React.useMemo(
-    () => getColumnsLabels(spreadsheet.numOfColumns),
-    [spreadsheet.numOfColumns]
-  );
-
   return (
     <table>
       <thead>
         <tr>
           <th></th>
-          {columns.map((column) => (
+          {spreadsheet.columns.map((column) => (
             <th key={`Column#${column}`}>{column}</th>
           ))}
         </tr>
@@ -89,7 +163,7 @@ const Spreadsheet = () => {
             row={row}
             onCellValueChange={onCellValueChange}
             rowNumber={index}
-            columns={columns}
+            columns={spreadsheet.columns}
           />
         ))}
       </tbody>
