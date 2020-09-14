@@ -1,39 +1,4 @@
-class Observable {
-  constructor(initialValue) {
-    this._value = initialValue;
-    this._observers = [];
-  }
-
-  subscribe(observer) {
-    observer(this._value);
-    const observerIndex = this._observers.push(observer) - 1;
-    return () => {
-      this._unsubscribe(observerIndex);
-    };
-  }
-
-  next(value) {
-    this._value = value;
-    this._notify();
-  }
-
-  _unsubscribe(observerIndex) {
-    this._observers.splice(observerIndex, 1);
-  }
-
-  _notify() {
-    this._observers.forEach((observer) => {
-      observer(this._value);
-    });
-  }
-}
-
-class CellReferenceError extends Error {
-  constructor(cell) {
-    super(`Referenced Cell "${cell}" does not exist`);
-    this.cell = cell;
-  }
-}
+import { Observable, CellReferenceError } from "./utils";
 
 const cellRegex = /([A-Za-z]+)(\d+)/;
 
@@ -156,7 +121,7 @@ const getColumnsLabels = (numOfColumns) => {
   });
 };
 
-class Spreadsheet {
+class SpreadsheetStore {
   constructor({ numOfColumns = 10, numOfRows = 10 }) {
     this.rows = new Array(numOfRows)
       .fill(1)
@@ -166,7 +131,7 @@ class Spreadsheet {
     this._listeners = {};
   }
 
-  observeCellValue(rowNumber, column) {
+  observeCell(rowNumber, column) {
     const cellPosition = `${column}${rowNumber}`;
     const cellObservable = this._cellsObservables[cellPosition];
     if (cellObservable) {
@@ -174,9 +139,8 @@ class Spreadsheet {
     }
 
     const cell = this.getRow(rowNumber)[column];
-    const cellValue = cell ? cell.value : 0;
 
-    const createdObservable = new Observable(cellValue);
+    const createdObservable = new Observable(cell);
     this._cellsObservables[cellPosition] = createdObservable;
     return createdObservable;
   }
@@ -204,7 +168,7 @@ class Spreadsheet {
       cell.rawValue = newRawValue;
       cell.value = cellValue;
 
-      this._notifyChange(cellPosition, cellValue);
+      this._notifyChange(cellPosition, cell);
     }
   }
 
@@ -230,19 +194,19 @@ class Spreadsheet {
 
     if (cellValue !== cell.value) {
       cell.value = cellValue;
-      this._notifyChange(cellPosition, cellValue);
+      this._notifyChange(cellPosition, cell);
     }
   }
 
-  _notifyChange(cellPosition, cellValue) {
+  _notifyChange(cellPosition, cell) {
     this._notifyListeners(cellPosition);
-    this._notifySubscribers(cellPosition, cellValue);
+    this._notifySubscribers(cellPosition, cell);
   }
 
-  _notifySubscribers(cellPosition, cellValue) {
+  _notifySubscribers(cellPosition, cell) {
     const cellObservable = this._cellsObservables[cellPosition];
     if (cellObservable) {
-      cellObservable.next(cellValue);
+      cellObservable.next(cell);
     }
   }
 
@@ -265,6 +229,4 @@ class Spreadsheet {
   }
 }
 
-const spreadsheet = new Spreadsheet({});
-
-export default spreadsheet;
+export default SpreadsheetStore;

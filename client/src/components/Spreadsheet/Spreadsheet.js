@@ -1,27 +1,10 @@
 import React from "react";
 
 import SpreadsheetRow from "components/SpreadsheetRow";
-
-import { createSpreadsheet, parseCellValue } from "./utils";
+import { SpreadsheetContext } from "components/SpreadsheetContext";
 
 const Spreadsheet = () => {
-  const [spreadsheet, updateSpreadsheet] = React.useState(createSpreadsheet());
-
-  const onCellValueChange = (row, column, rawValue) => {
-    const updatedRow = {
-      ...row,
-      [column]: {
-        rawValue,
-        value: parseCellValue(rawValue, spreadsheet),
-      },
-    };
-    updateSpreadsheet({
-      ...spreadsheet,
-      rows: spreadsheet.rows.map((_row) =>
-        _row.id === row.id ? updatedRow : _row
-      ),
-    });
-  };
+  const spreadsheet = React.useContext(SpreadsheetContext);
 
   return (
     <table>
@@ -37,9 +20,7 @@ const Spreadsheet = () => {
         {spreadsheet.rows.map((row, index) => (
           <SpreadsheetRow
             key={row.id}
-            row={row}
-            onCellValueChange={onCellValueChange}
-            rowNumber={index}
+            rowNumber={index + 1}
             columns={spreadsheet.columns}
           />
         ))}

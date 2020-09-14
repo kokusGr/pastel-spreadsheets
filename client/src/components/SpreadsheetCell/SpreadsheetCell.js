@@ -1,13 +1,38 @@
 import React from "react";
 
-const SpreadsheetCell = (props) => {
-  const { column, rawValue, value, onConfirm } = props;
+import { SpreadsheetContext } from "components/SpreadsheetContext";
 
-  const [editedValue, setEditedValue] = React.useState(rawValue || "");
+const SpreadsheetCell = (props) => {
+  const { column, rowNumber } = props;
+
+  const [cell, setCell] = React.useState(null);
+  const [editedValue, setEditedValue] = React.useState("");
   const [isBeingEdited, setIsBeingEdited] = React.useState(false);
 
+  const spreadsheet = React.useContext(SpreadsheetContext);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    const unsubscribe = spreadsheet
+      .observeCell(rowNumber, column)
+      .subscribe((_cell) => {
+        if (_cell) {
+          isMounted && setCell({ ..._cell });
+          !isBeingEdited && setEditedValue(_cell.rawValue);
+        }
+      });
+
+    return () => {
+      unsubscribe();
+      isMounted = false;
+    };
+  }, [column, rowNumber, spreadsheet, isBeingEdited]);
+
   const handleOnConfirm = () => {
-    onConfirm(editedValue, column);
+    if (cell || editedValue) {
+      spreadsheet.updateCellValue(rowNumber, column, editedValue);
+    }
     setIsBeingEdited(false);
   };
 
@@ -20,7 +45,7 @@ const SpreadsheetCell = (props) => {
       handleOnConfirm();
     } else if (keyEvent.key === "Escape") {
       setIsBeingEdited(false);
-      setEditedValue(rawValue);
+      setEditedValue(cell ? cell.rawValue : "");
     }
   };
 
@@ -46,7 +71,7 @@ const SpreadsheetCell = (props) => {
             setIsBeingEdited(true);
           }}
         >
-          {value}
+          {cell ? cell.value : ""}
         </div>
       )}
     </td>
