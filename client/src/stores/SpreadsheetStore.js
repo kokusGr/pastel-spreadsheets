@@ -159,14 +159,12 @@ class SpreadsheetStore {
     );
 
     const cellPosition = `${column}${rowNumber}`;
-    // TODO: Remove unsued dependencies
-    dependencies.forEach((dependency) => {
-      this._addListener(dependency, cellPosition);
-    });
+    this._updateDependencies(cellPosition, dependencies, cell._dependencies);
 
-    if (cell.value !== cellValue) {
+    if (cell.value !== cellValue || cell.rawValue !== newRawValue) {
       cell.rawValue = newRawValue;
       cell.value = cellValue;
+      cell._dependencies = dependencies;
 
       this._notifyChange(cellPosition, cell);
     }
@@ -210,7 +208,25 @@ class SpreadsheetStore {
     }
   }
 
-  _notifyListeners(cellPosition) {
+  _updateDependencies(
+    cellPosition,
+    dependencies = [],
+    previousDependencies = []
+  ) {
+    dependencies.forEach((dependency) => {
+      if (!previousDependencies.includes(dependency)) {
+        this._addDependencyListener(dependency, cellPosition);
+      }
+    });
+
+    previousDependencies.forEach((dependency) => {
+      if (!dependencies.includes(dependency)) {
+        this._removeDependencyListener(dependency, cellPosition);
+      }
+    });
+  }
+
+  _notifyDependencyListeners(cellPosition) {
     const listeners = this._listeners[cellPosition];
     if (listeners) {
       listeners.forEach((listener) => {
@@ -219,12 +235,20 @@ class SpreadsheetStore {
     }
   }
 
-  _addListener(cellPosition, listener) {
+  _addDependencyListener(cellPosition, listener) {
     const listeners = this._listeners[cellPosition];
     if (listeners) {
       listeners.push(listener);
     } else {
       this._listeners[cellPosition] = [listener];
+    }
+  }
+
+  _removeDependencyListener(cellPosition, listener) {
+    const listeners = this._listeners[cellPosition];
+    if (listeners) {
+      const listenerIndex = listeners.indexOf(listener);
+      listeners.splice(listenerIndex, 1);
     }
   }
 }
