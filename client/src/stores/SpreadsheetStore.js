@@ -43,8 +43,12 @@ const cellResolver = {
     const maybeNumber = +value;
     if (Number.isNaN(maybeNumber)) {
       const upperCaseValue = value.toUpperCase();
+      if (value === context.cellPosition) {
+        throw new CellReferenceError(value);
+      }
+      const cellValue = getCellValue(upperCaseValue, context.spreadsheet);
       context.addDependency(upperCaseValue);
-      return getCellValue(upperCaseValue, context.spreadsheet);
+      return cellValue;
     }
 
     return value;
@@ -93,12 +97,12 @@ const parseRawValue = (rawValue, context) => {
   return "#TypeError";
 };
 
-const parseCellValue = (rawValue, spreadsheet) => {
+const parseCellValue = (rawValue, cellPosition, spreadsheet) => {
   const dependencies = [];
   const addDependency = (dependency) => {
     dependencies.push(dependency);
   };
-  const context = { spreadsheet, addDependency };
+  const context = { spreadsheet, addDependency, cellPosition };
 
   const value = parseRawValue(rawValue, context);
   return { value, dependencies };
@@ -148,6 +152,7 @@ class SpreadsheetStore {
   updateCellValue(rowNumber, column, newRawValue) {
     const row = this.getRow(rowNumber);
     const cell = this._getOrCreateCell(row, column);
+    const cellPosition = `${column}${rowNumber}`;
 
     if (cell.rawValue === newRawValue) {
       return;
@@ -155,10 +160,10 @@ class SpreadsheetStore {
 
     const { value: cellValue, dependencies } = parseCellValue(
       newRawValue,
+      cellPosition,
       this
     );
 
-    const cellPosition = `${column}${rowNumber}`;
     this._updateDependencies(cellPosition, dependencies, cell._dependencies);
 
     if (cell.value !== cellValue || cell.rawValue !== newRawValue) {
@@ -197,7 +202,7 @@ class SpreadsheetStore {
   }
 
   _notifyChange(cellPosition, cell) {
-    this._notifyListeners(cellPosition);
+    this._notifyDependencyListeners(cellPosition);
     this._notifySubscribers(cellPosition, cell);
   }
 
