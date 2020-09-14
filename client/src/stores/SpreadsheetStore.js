@@ -1,10 +1,15 @@
 import { Observable, CellReferenceError } from "./utils";
 
-const cellRegex = /([A-Za-z]+)(\d+)/;
+const cellRegex = /^([A-Za-z]+)(\d+)$/;
 
 // TODO: Use Cell ID?
 const getCellValue = (cellPosition, spreadsheet) => {
-  const [, column, rowNumber] = cellRegex.exec(cellPosition);
+  const match = cellRegex.exec(cellPosition);
+  if (!match) {
+    throw new CellReferenceError(cellPosition);
+  }
+
+  const [, column, rowNumber] = match;
   const cellRow = spreadsheet.getRow(rowNumber);
 
   if (!cellRow || !spreadsheet.columns.includes(column)) {
@@ -42,7 +47,7 @@ const cellResolver = {
     // NOTE: This assumes that value can only be a number or a cell reference
     const maybeNumber = +value;
     if (Number.isNaN(maybeNumber)) {
-      const upperCaseValue = value.toUpperCase();
+      const upperCaseValue = value.toUpperCase().trim();
       if (value === context.cellPosition) {
         throw new CellReferenceError(value);
       }
@@ -193,7 +198,11 @@ class SpreadsheetStore {
   _recalculateRawValue(cellPosition) {
     const [, column, rowNumber] = cellRegex.exec(cellPosition);
     const cell = this.getRow(rowNumber)[column];
-    const { value: cellValue } = parseCellValue(cell.rawValue, this);
+    const { value: cellValue } = parseCellValue(
+      cell.rawValue,
+      cellPosition,
+      this
+    );
 
     if (cellValue !== cell.value) {
       cell.value = cellValue;
