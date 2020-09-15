@@ -1,20 +1,25 @@
 import flask
-from flask_cors import CORS
 import re
+import os
+
+from flask_cors import CORS
+from bson import json_util
+from dotenv import load_dotenv
+
+from db import init_db
+from spreadsheet_repo import SpreadsheetRepo
+
+load_dotenv()
 
 app = flask.Flask(__name__)
 CORS(app)
-
-spreadsheet = {
-    "ID": 1,
-    "columns": [chr(i+ord('A')) for i in range(10)],
-    "rows": [{ "ID": f"Row#{i}"} for i in range(10)],
-    "_listeners": {}
-}
+db = init_db(os.getenv("DB_URI"))
+repo = SpreadsheetRepo(db)
 
 @app.route("/spreadsheets/<string:ID>", methods=["GET"])
 def get_spreadsheet(ID):
-    return flask.jsonify(spreadsheet)
+    spreadsheet = repo.get(ID)
+    return json_util.dumps(spreadsheet)
 
 
 def update_listeners(changeset):
@@ -38,8 +43,8 @@ def update_listeners(changeset):
 
 cell_regex = "^([A-Za-z]+)(\d+)$"
 
-@app.route("/spreadsheets/<string:spreadsheetID>/cells/<string:cell_position>", methods=["PUT"])
-def update_cell(spreadsheetID, cell_position):
+@app.route("/spreadsheets/<string:spreadsheet_id>/cells/<string:cell_position>", methods=["PUT"])
+def update_cell(spreadsheet_id, cell_position):
     match = re.match(cell_regex, cell_position)
     if not match:
         flask.abort(404)
@@ -54,10 +59,8 @@ def update_cell(spreadsheetID, cell_position):
     if not new_cell:
         flask.abort(400)
 
-    spreadsheet["rows"][row - 1][column] = new_cell
     changeset = body.get('listeners', None)
-    if changeset:
-        update_listeners(changeset)
+    repo.update_cell(spreadsheet_id, row, column, new_cell, changeset)
 
     return "OK"
 

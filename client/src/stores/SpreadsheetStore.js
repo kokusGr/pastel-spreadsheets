@@ -25,7 +25,7 @@ class SpreadsheetStore {
     this.rows = spreadsheet.rows;
     this.columns = spreadsheet.columns;
     this._listeners = spreadsheet._listeners;
-    this.ID = spreadsheet.ID;
+    this.ID = spreadsheet._id.$oid;
     this._cellsObservables = {};
   }
 
@@ -104,7 +104,7 @@ class SpreadsheetStore {
   }
 
   _notifyChange(cellPosition, cell, listenersChangeset) {
-    API.updateCell(cellPosition, {
+    API.updateCell(this.ID, cellPosition, {
       cell,
       listeners: listenersChangeset,
     });
