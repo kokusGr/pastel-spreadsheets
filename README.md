@@ -1,43 +1,19 @@
-# Building an Interactive Spreadsheet
+# Description
 
-Today, the vast majority of businesses implement their commission plan models
-in Microsoft Excel, Google Sheets, or some other spreadsheet software. In this
-problem, you will implement a simplified browser-based spreadsheet that can be
-used to implement an extremely simple financial model.
+Build with React simple interactive spreadsheet. Allows to store numbers and cell references using `=A1` syntax.
+Support addition and multiplication and can easily support more. Updating a cell automatically updates every
+dependant cell recursively. Data is stored in MongoDB hosted on MongoDB Atlas. Backend is running Flask
+with Gunicorn hosted on Heroku. Frontend is also hosted on Heroku using Nginx.
 
-# Requirements
+# Setup
 
-* For simplicity, the size of the spreadsheet is fixed to 10 rows and 10
-  columns.
-  	- Columns are named after capital letters, starting with "A".
-	- Rows are numbered and increasing, starting from "1".
-* The state of the spreadsheet should be maintained in a backend service that
-  is mutatable via API calls.
-* The frontend should be interactive: saving data after a cell in the
-  spreadsheet changes, and updating any affected cells with their newly
-  computed values.
-* The state of the spreadsheet should be persisted across server restarts.
-* Cell values should support either an integer or a simple formula that
-  references other cells and only needs to support addition.
-    - For example, `-1` and `123` should be able to be stored in a cell.
-    - `=A1+B1` should be able to be stored in a cell, and the display value
-      should be the result of evaluating the sum of the value in `A1` and
-      the value in `B1`.
+## Backend
 
-# Out-of-scope
+1. Create `.env` file inside `server` folder with `DB_URI` pointing to MongoDB instance
+2. Run `make setup_server_dev`
+3. Run `make run_server_dev` to start a local server
 
-* Don't worry about handling multiple concurrent users viewing and editing the
-  spreadsheet at the same time.
+## Frontend
 
-# Background
-
-The sample code distributed with this package is provided to you as a starting
-point if you'd like to use it.
-
-## Setup
-
-1. Set up your virtualenv: `virtualenv -p python3 interview_venv`
-2. Source the `activate` script: `source interview_venv/bin/activate`
-3. Install the dependencies in your virtualenv:
-   `pip install -r requirements.txt`
-4. Run the server `FLASK_DEBUG=1 FLASK_APP=server.py flask run`
+1. Run `make setup_client_dev`
+2. Run `make run_client_dev`

@@ -31,18 +31,18 @@ class SpreadsheetRepo():
 
       listeners = spreadsheet["_listeners"].get(dependency, None)
       if not listeners:
-        update["$set"][f"_listeners.{dependency}"] = [listener]
+        update["$set"][f"listeners.{dependency}"] = [listener]
       elif listener not in listeners:
-        update["$push"][f"_listeners.{dependency}"] = listener
+        update["$push"][f"listeners.{dependency}"] = listener
 
 
     for removed in changeset["removed"]:
       dependency = removed.get("dependency", None)
       listener = removed.get("listener", None)
 
-      listeners = spreadsheet["_listeners"].get(dependency, None)
+      listeners = spreadsheet["listeners"].get(dependency, None)
       if listeners and listener in listeners:
-        update["$pull"][f"_listeners.{dependency}"] = listener
+        update["$pull"][f"listeners.{dependency}"] = listener
 
     return update
 

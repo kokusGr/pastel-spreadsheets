@@ -24,7 +24,7 @@ class SpreadsheetStore {
   constructor(spreadsheet) {
     this.rows = spreadsheet.rows;
     this.columns = spreadsheet.columns;
-    this._listeners = spreadsheet._listeners;
+    this._listeners = spreadsheet.listeners;
     this.ID = spreadsheet._id.$oid;
     this._cellsObservables = {};
   }

@@ -2,7 +2,8 @@ setup_server_dev:
 	cd server; \
 	virtualenv interview_venv; \
 	source interview_venv/bin/activate; \
-	pip install -r requirements.txt;
+	pip install -r requirements.txt; \
+	python seed_db.py;
 
 run_server_dev:
 	source server/interview_venv/bin/activate; \
