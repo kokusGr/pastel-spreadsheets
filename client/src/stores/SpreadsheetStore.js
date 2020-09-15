@@ -1,117 +1,7 @@
-import { Observable, CellReferenceError } from "./utils";
+import * as API from "services/api";
 
-const cellRegex = /^([A-Za-z]+)(\d+)$/;
-
-// TODO: Use Cell ID?
-const getCellValue = (cellPosition, spreadsheet) => {
-  const match = cellRegex.exec(cellPosition);
-  if (!match) {
-    throw new CellReferenceError(cellPosition);
-  }
-
-  const [, column, rowNumber] = match;
-  const cellRow = spreadsheet.getRow(rowNumber);
-
-  if (!cellRow || !spreadsheet.columns.includes(column)) {
-    throw new CellReferenceError(cellPosition);
-  }
-
-  const cell = cellRow[column];
-  return cell ? cell.value : 0;
-};
-
-const addResolver = {
-  parse(expression) {
-    return expression.split("+");
-  },
-
-  evaluate(values) {
-    return values.reduce((result, value) => result + value, 0);
-  },
-};
-
-const multiplyResolver = {
-  parse(expression) {
-    return expression.split("*");
-  },
-  evaluate(values) {
-    return values.reduce((result, value) => result * value, 1);
-  },
-};
-
-const cellResolver = {
-  parse(expression) {
-    return expression;
-  },
-  evaluate(value, context) {
-    // NOTE: This assumes that value can only be a number or a cell reference
-    const maybeNumber = +value;
-    if (Number.isNaN(maybeNumber)) {
-      const upperCaseValue = value.toUpperCase().trim();
-      if (value === context.cellPosition) {
-        throw new CellReferenceError(value);
-      }
-      const cellValue = getCellValue(upperCaseValue, context.spreadsheet);
-      context.addDependency(upperCaseValue);
-      return cellValue;
-    }
-
-    return value;
-  },
-};
-
-const defaultResolvers = [addResolver, multiplyResolver, cellResolver];
-
-const resolve = (expression, context, resolvers = defaultResolvers) => {
-  const [currentResolver, ...nextResolvers] = resolvers;
-  const parts = currentResolver.parse(expression, context);
-  const values =
-    nextResolvers.length > 0
-      ? parts.map((part) => resolve(part, context, nextResolvers))
-      : parts;
-  return currentResolver.evaluate(values, context);
-};
-
-const resolveCellFunction = (rawValue, context) => {
-  try {
-    const expression = rawValue.slice(1);
-    return resolve(expression, context);
-  } catch (error) {
-    if (error instanceof CellReferenceError) {
-      return `#ReferenceError: ${error.cell}`;
-    } else {
-      throw error;
-    }
-  }
-};
-
-const parseRawValue = (rawValue, context) => {
-  if (!rawValue) {
-    return "";
-  }
-
-  const maybeNumber = +rawValue;
-  if (!Number.isNaN(maybeNumber)) {
-    return maybeNumber;
-  }
-
-  if (typeof rawValue === "string" && rawValue.startsWith("=")) {
-    return resolveCellFunction(rawValue, context);
-  }
-
-  return "#TypeError";
-};
-
-const parseCellValue = (rawValue, cellPosition, spreadsheet) => {
-  const dependencies = [];
-  const addDependency = (dependency) => {
-    dependencies.push(dependency);
-  };
-  const context = { spreadsheet, addDependency, cellPosition };
-
-  const value = parseRawValue(rawValue, context);
-  return { value, dependencies };
-};
+import { Observable } from "./utils";
+import { cellRegex, parseCellValue } from "./cellParser";
 
 const getLabel = (index, label = "") => {
   if (index < 0) {
@@ -131,13 +21,12 @@ const getColumnsLabels = (numOfColumns) => {
 };
 
 class SpreadsheetStore {
-  constructor({ numOfColumns = 10, numOfRows = 10 }) {
-    this.rows = new Array(numOfRows)
-      .fill(1)
-      .map((_, i) => ({ id: `Row#${i}` }));
-    this.columns = getColumnsLabels(numOfColumns);
+  constructor(spreadsheet) {
+    this.rows = spreadsheet.rows;
+    this.columns = spreadsheet.columns;
+    this._listeners = spreadsheet._listeners;
+    this.ID = spreadsheet.ID;
     this._cellsObservables = {};
-    this._listeners = {};
   }
 
   observeCell(rowNumber, column) {
@@ -169,14 +58,18 @@ class SpreadsheetStore {
       this
     );
 
-    this._updateDependencies(cellPosition, dependencies, cell._dependencies);
+    const listenersChangeset = this._updateDependencies(
+      cellPosition,
+      dependencies,
+      cell._dependencies
+    );
 
     if (cell.value !== cellValue || cell.rawValue !== newRawValue) {
       cell.rawValue = newRawValue;
       cell.value = cellValue;
       cell._dependencies = dependencies;
 
-      this._notifyChange(cellPosition, cell);
+      this._notifyChange(cellPosition, cell, listenersChangeset);
     }
   }
 
@@ -210,7 +103,12 @@ class SpreadsheetStore {
     }
   }
 
-  _notifyChange(cellPosition, cell) {
+  _notifyChange(cellPosition, cell, listenersChangeset) {
+    API.updateCell(cellPosition, {
+      cell,
+      listeners: listenersChangeset,
+    });
+
     this._notifyDependencyListeners(cellPosition);
     this._notifySubscribers(cellPosition, cell);
   }
@@ -227,17 +125,23 @@ class SpreadsheetStore {
     dependencies = [],
     previousDependencies = []
   ) {
+    const listenersChangeset = { added: [], removed: [] };
+
     dependencies.forEach((dependency) => {
       if (!previousDependencies.includes(dependency)) {
         this._addDependencyListener(dependency, cellPosition);
+        listenersChangeset.added.push({ listener: cellPosition, dependency });
       }
     });
 
     previousDependencies.forEach((dependency) => {
       if (!dependencies.includes(dependency)) {
         this._removeDependencyListener(dependency, cellPosition);
+        listenersChangeset.removed.push({ listener: cellPosition, dependency });
       }
     });
+
+    return listenersChangeset;
   }
 
   _notifyDependencyListeners(cellPosition) {
@@ -249,17 +153,17 @@ class SpreadsheetStore {
     }
   }
 
-  _addDependencyListener(cellPosition, listener) {
-    const listeners = this._listeners[cellPosition];
+  _addDependencyListener(dependency, listener) {
+    const listeners = this._listeners[dependency];
     if (listeners) {
       listeners.push(listener);
     } else {
-      this._listeners[cellPosition] = [listener];
+      this._listeners[dependency] = [listener];
     }
   }
 
-  _removeDependencyListener(cellPosition, listener) {
-    const listeners = this._listeners[cellPosition];
+  _removeDependencyListener(dependency, listener) {
+    const listeners = this._listeners[dependency];
     if (listeners) {
       const listenerIndex = listeners.indexOf(listener);
       listeners.splice(listenerIndex, 1);
@@ -268,3 +172,5 @@ class SpreadsheetStore {
 }
 
 export default SpreadsheetStore;
+
+export { getColumnsLabels };

@@ -12,6 +12,8 @@ setup_client_dev:
 	cd client; \
 	yarn install;
 
+run_client_dev: export REACT_APP_SERVER_URL= http://localhost:5000
+
 run_client_dev:
 	cd client; \
 	yarn start;

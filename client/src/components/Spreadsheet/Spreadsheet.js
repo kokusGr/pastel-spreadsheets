@@ -30,7 +30,7 @@ const Spreadsheet = () => {
       <tbody>
         {spreadsheet.rows.map((row, index) => (
           <SpreadsheetRow
-            key={row.id}
+            key={row.ID}
             rowNumber={index + 1}
             isLast={index === spreadsheet.rows.length - 1}
             columns={spreadsheet.columns}
