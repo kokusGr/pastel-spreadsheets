@@ -1,0 +1,20 @@
+.main {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  overflow: scroll;
+  display: flex;
+}
+
+.container {
+  padding: 20px;
+}
+
+.title {
+  font-style: italic;
+  font-size: 34px;
+  color: #5e563f;
+  padding: 16px 32px;
+}

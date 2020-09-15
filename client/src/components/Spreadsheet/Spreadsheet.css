@@ -1,0 +1,25 @@
+.table {
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table-columns-header-row {
+  display: flex;
+}
+
+.table-columns-header {
+  width: 150px;
+  height: 40px;
+  background-color: #f3ecdb;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.table-columns-header-last {
+  border-right: 1px solid black;
+}
+
+.table-columns-header-spacer {
+  width: 40px;
+}

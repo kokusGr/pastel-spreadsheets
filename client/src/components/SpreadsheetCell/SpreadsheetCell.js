@@ -2,6 +2,8 @@ import React from "react";
 
 import { SpreadsheetContext } from "components/SpreadsheetContext";
 
+import "./SpreadsheetCell.css";
+
 const SpreadsheetCell = (props) => {
   const { column, rowNumber } = props;
 
@@ -17,9 +19,9 @@ const SpreadsheetCell = (props) => {
     const unsubscribe = spreadsheet
       .observeCell(rowNumber, column)
       .subscribe((_cell) => {
-        if (_cell) {
-          isMounted && setCell({ ..._cell });
-          !isBeingEdited && setEditedValue(_cell.rawValue);
+        if (_cell && isMounted) {
+          setCell({ ..._cell });
+          setEditedValue(_cell.rawValue);
         }
       });
 
@@ -27,7 +29,7 @@ const SpreadsheetCell = (props) => {
       unsubscribe();
       isMounted = false;
     };
-  }, [column, rowNumber, spreadsheet, isBeingEdited]);
+  }, [column, rowNumber, spreadsheet]);
 
   const handleOnConfirm = () => {
     if (cell || editedValue) {
@@ -54,7 +56,7 @@ const SpreadsheetCell = (props) => {
   };
 
   return (
-    <td>
+    <td className={`cell-root ${isBeingEdited ? "cell-root-focused" : ""}`}>
       {isBeingEdited ? (
         <input
           type="text"
@@ -63,10 +65,11 @@ const SpreadsheetCell = (props) => {
           value={editedValue}
           onBlur={handleOnBlur}
           autoFocus={true}
+          className={`cell-input`}
         />
       ) : (
         <div
-          style={{ width: 100, height: 40, border: "1px solid red" }}
+          className="cell-value"
           onClick={() => {
             setIsBeingEdited(true);
           }}

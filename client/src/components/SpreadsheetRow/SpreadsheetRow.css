@@ -1,0 +1,16 @@
+.row-root {
+  display: flex;
+}
+
+.row-label {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 40px;
+  width: 40px;
+  background-color: #f3ecdb;
+}
+
+.row-label-last {
+  border-bottom: 1px solid black;
+}

@@ -10,11 +10,13 @@ const App = () => {
   const spreadsheet = new SpreadsheetStore({});
 
   return (
-    <div>
-      <h1>Hello</h1>
-      <SpreadsheetProvider store={spreadsheet}>
-        <Spreadsheet />
-      </SpreadsheetProvider>
+    <div className="main">
+      <div className="container">
+        <h1 className="title">Pastel Spreadhseet</h1>
+        <SpreadsheetProvider store={spreadsheet}>
+          <Spreadsheet />
+        </SpreadsheetProvider>
+      </div>
     </div>
   );
 };

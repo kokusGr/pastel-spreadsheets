@@ -1,0 +1,26 @@
+.cell-root {
+  height: 40px;
+  width: 150px;
+  padding: 0 8px;
+  display: flex;
+  border-right: 1px solid black;
+  border-bottom: 1px solid black;
+}
+
+.cell-root-focused {
+  box-shadow: 0 1px 6px 3px #877d71;
+}
+
+.cell-value {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cell-input {
+  width: 100%;
+  outline: none;
+  border: none;
+}
