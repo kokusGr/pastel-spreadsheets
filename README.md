@@ -1,9 +1,11 @@
 # Description
 
-Build with React simple interactive spreadsheet. Allows to store numbers and cell references using `=A1` syntax.
-Support addition and multiplication and can easily support more. Updating a cell automatically updates every
-dependant cell recursively. Data is stored in MongoDB hosted on MongoDB Atlas. Backend is running Flask
+Build with React, simple interactive spreadsheet. Allows to store numbers and cell references using `=A1` syntax.
+Supports addition and multiplication and can easily be extended to support more. Updating a cell automatically
+updates every dependant cell recursively. Data is stored in MongoDB hosted on MongoDB Atlas. Backend is running Flask
 with Gunicorn hosted on Heroku. Frontend is also hosted on Heroku using Nginx.
+
+Live demo: https://pastel-spreadsheets-frontend.herokuapp.com/
 
 # Setup
 
